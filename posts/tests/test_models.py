@@ -92,7 +92,8 @@ class ModelTest(TestCase):
         self.assertEqual(expected_object_name, str(post))
 
     def test_object_name_is_title_fild(self):
-        """В поле __str__  объекта group записано значение поля group.title."""
+        """В поле __str__  объекта group
+           записано значение поля group.title."""
         group = ModelTest.group
         expected_object_name = group.title
         self.assertEqual(expected_object_name, str(group))

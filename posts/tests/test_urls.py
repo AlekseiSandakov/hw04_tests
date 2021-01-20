@@ -5,6 +5,12 @@ from posts.forms import PostForm
 from posts.models import Group, Post, User
 
 
+INDEX_URL = reverse('index')
+NEW_URL = reverse('new_post')
+SLUG = 'test'
+GROUP_URL = reverse('group', args=[SLUG])
+
+
 class StaticURLTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -14,16 +20,21 @@ class StaticURLTests(TestCase):
         cls.group = Group.objects.create(
             title='Тестовый заголовок',
             slug='test',
-            description='Описание тестовой группы'
+            description='Описание тестовой группы',
         )
-
         cls.post = Post.objects.create(
             text='Тестовый тест',
             pub_date='06.01.2021',
-            author=StaticURLTests.user_author,
-            group=StaticURLTests.group
+            author=cls.user_author,
+            group=cls.group,
         )
         cls.form = PostForm()
+        cls.EDIT_AUTHOR = reverse('post_edit',
+                                  args=(cls.user_author.username,
+                                        cls.post.id))
+        cls.USER_URL = reverse('profile', args=(cls.user_author.username,))
+        cls.AUTHOR_POST = reverse('post', args=(cls.user_author.username,
+                                                cls.post.id))
 
     def setUp(self):
         self.guest_client = Client()
@@ -34,26 +45,26 @@ class StaticURLTests(TestCase):
 
     def test_home_url_exists_at_desired_location(self):
         """Страница / доступна любому пользователю."""
-        response = self.guest_client.get('/')
+        response = self.guest_client.get(INDEX_URL)
         self.assertEqual(response.status_code, 200)
 
     def test_new_list_url_exists_at_desired_location(self):
         """Страница /new/ доступна авторизованному пользователю."""
-        response = self.authorized_client_VasiaBasov.get('/new/')
+        response = self.authorized_client_VasiaBasov.get(NEW_URL)
         self.assertEqual(response.status_code, 200)
 
     def test_group_list_url_exists_at_desired_location(self):
         """Страница /group/ доступна авторизованному пользователю."""
-        response = self.authorized_client_VasiaBasov.get('/group/test/')
+        response = self.authorized_client_VasiaBasov.get(GROUP_URL)
         self.assertEqual(response.status_code, 200)
 
     def test_urls_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
         templates_url_names = {
-            'index.html': '/',
-            'group.html': '/group/test/',
-            'new.html': '/new/',
-            'new.html': '/VasiaBasov/1/edit/',
+            'index.html': INDEX_URL,
+            'group.html': GROUP_URL,
+            'new.html': NEW_URL,
+            'new.html': self.EDIT_AUTHOR,
         }
         for template, reverse_name in templates_url_names.items():
             with self.subTest():
@@ -62,45 +73,26 @@ class StaticURLTests(TestCase):
 
     def test_username_list_url_exists_at_desired_location(self):
         """Страница <username> доступна авторизованному пользователю."""
-        response = self.authorized_client_VasiaBasov.get('/VasiaBasov/')
+        response = self.authorized_client_VasiaBasov.get(self.USER_URL)
         self.assertEqual(response.status_code, 200)
 
     def test_username_post_id_list_url_exists_at_desired_location(self):
         """Страница <username>/<post_id> доступна
            авторизованному пользователю."""
-        response = self.authorized_client_VasiaBasov.get('/VasiaBasov/1/')
+        response = self.authorized_client_VasiaBasov.get(self.AUTHOR_POST)
         self.assertEqual(response.status_code, 200)
 
     def test_post_edit_url_exists_at_desired_location(self):
         """Страница post_edit не доступна любому пользователю."""
-        response = self.guest_client.get('post_edit')
-        self.assertEqual(response.status_code, 404)
+        response = self.guest_client.get(self.EDIT_AUTHOR)
+        self.assertEqual(response.status_code, 302)
 
     def test_auth_author_user_page_edit(self):
         """Автору поста доступно редактирование поста"""
-        response = self.authorized_client_VasiaBasov.get(reverse(
-            "post_edit", args=[StaticURLTests.user_author.username,
-                               StaticURLTests.post.id]))
+        response = self.authorized_client_VasiaBasov.get(self.EDIT_AUTHOR)
         self.assertEqual(response.status_code, 200)
 
     def test_not_auth_author_user_page_edit(self):
-        """Авторизированному не автору поста не
-           доступно редактирование поста"""
-        response = self.authorized_client_PetrBasov.get(reverse(
-            "post_edit", args=[StaticURLTests.user_other.username,
-                               StaticURLTests.post.id]))
-        self.assertEqual(response.status_code, 404)
-
-    def test_new_post_authorized_not_author(self):
         """Проверка редиректа авторизированного пользователя, но не автора."""
-        reverse_name_url = {
-            reverse('post_edit', args=(StaticURLTests.user_author,
-                                       StaticURLTests.post.id)):
-            reverse('post', args=(StaticURLTests.user_author,
-                                  StaticURLTests.post.id)),
-        }
-        for reverse_name, url in reverse_name_url.items():
-            with self.subTest(reverse_name=reverse_name):
-                response = self.authorized_client_PetrBasov.get(reverse_name,
-                                                                follow=True)
-                self.assertRedirects(response, url, 302)
+        response = self.authorized_client_PetrBasov.get(self.EDIT_AUTHOR)
+        self.assertEqual(response.status_code, 302)

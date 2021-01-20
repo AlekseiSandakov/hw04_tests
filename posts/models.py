@@ -54,9 +54,9 @@ class Post(models.Model):
     )
     objects = models.Manager()
 
+    class Meta:
+        ordering = ('-pub_date',)
+
     def __str__(self):
         self.text = Truncator(self.text).words(10)
         return self.text
-
-    class Meta:
-        ordering = ['-pub_date']
